@@ -370,7 +370,7 @@ This project is open-source and available under the **MIT License** — see `LIC
 
 - **Issues** — Open an issue on GitHub for bugs
 - **Discussions** — Use GitHub Discussions for questions
-- **Email** — learninghub@example.com (update with your email)
+- **Email** — amohamedyasin7786@gmail.com
 
 ---
 
