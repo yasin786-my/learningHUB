@@ -1,0 +1,41 @@
+# Git ignore for LearningHUB Backend
+
+# Python virtual environment
+venv/
+env/
+ENV/
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# Flask instance folder
+instance/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/

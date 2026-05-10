@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global Reset & Base ─────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #010313;
+  color: #e2e8f0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Custom Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Glassmorphism Utilities ─────────────────────────────── */
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .glass-medium {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-heavy {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .glass-sapphire {
+    background: rgba(59, 80, 224, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(59, 80, 224, 0.15);
+  }
+
+  .glass-emerald {
+    background: rgba(16, 185, 129, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+  }
+
+  /* ── Glow Effects ──────────────────────────────────────── */
+  .glow-sapphire {
+    box-shadow: 0 0 30px rgba(59, 80, 224, 0.15),
+                0 0 60px rgba(59, 80, 224, 0.05);
+  }
+
+  .glow-emerald {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.15),
+                0 0 60px rgba(16, 185, 129, 0.05);
+  }
+
+  .glow-white {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+  }
+
+  /* ── Button Styles ─────────────────────────────────────── */
+  .btn-primary {
+    @apply px-6 py-2.5 rounded-xl font-medium text-white transition-all duration-300;
+    background: linear-gradient(135deg, #3b50e0, #5570ff);
+    box-shadow: 0 4px 20px rgba(59, 80, 224, 0.3);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 30px rgba(59, 80, 224, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-emerald {
+    @apply px-6 py-2.5 rounded-xl font-medium text-white transition-all duration-300;
+    background: linear-gradient(135deg, #059669, #34d399);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+  }
+  .btn-emerald:hover {
+    box-shadow: 0 6px 30px rgba(16, 185, 129, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    @apply px-6 py-2.5 rounded-xl font-medium text-dark-200 transition-all duration-300;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-danger {
+    @apply px-6 py-2.5 rounded-xl font-medium text-white transition-all duration-300;
+    background: linear-gradient(135deg, #dc2626, #f87171);
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+  }
+  .btn-danger:hover {
+    box-shadow: 0 6px 30px rgba(220, 38, 38, 0.5);
+    transform: translateY(-1px);
+  }
+
+  /* ── Input Styles ──────────────────────────────────────── */
+  .input-glass {
+    @apply w-full px-4 py-3 rounded-xl text-white placeholder-dark-400
+           outline-none transition-all duration-300;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .input-glass:focus {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(59, 80, 224, 0.4);
+    box-shadow: 0 0 20px rgba(59, 80, 224, 0.1);
+  }
+
+  /* ── Card Hover ────────────────────────────────────────── */
+  .card-hover {
+    @apply transition-all duration-500;
+  }
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ── Floating Background Orbs ────────────────────────────── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.orb-sapphire {
+  background: radial-gradient(circle, #3b50e0, transparent);
+}
+
+.orb-emerald {
+  background: radial-gradient(circle, #10b981, transparent);
+}
+
+.orb-purple {
+  background: radial-gradient(circle, #8b5cf6, transparent);
+}
+
+/* ── Page Transition ─────────────────────────────────────── */
+.page-enter {
+  animation: page-fade-in 0.4s ease-out;
+}
+
+@keyframes page-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
