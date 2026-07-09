@@ -9,7 +9,6 @@ import ProtectedRoute from './routes/ProtectedRoute';
 
 // Pages
 import Login from './pages/Login';
-import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
@@ -22,7 +21,6 @@ export default function App() {
                 <Routes>
                     {/* Public Routes */}
                     <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
 
                     {/* Protected Routes */}
                     <Route

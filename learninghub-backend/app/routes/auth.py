@@ -1,5 +1,5 @@
 """
-LearningHUB — Authentication routes (login / register / me)
+LearningHUB — Authentication routes (login / me)
 """
 
 import re
@@ -16,10 +16,6 @@ auth_bp = Blueprint("auth", __name__)
 
 
 # ── Helpers ────────────────────────────────────────────────────────
-def _hash_password(plain: str) -> str:
-    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
 def _check_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
@@ -34,39 +30,6 @@ def _extract_youtube_id(url: str):
         if m:
             return m.group(1)
     return None
-
-
-# ── POST /api/auth/register ───────────────────────────────────────
-@auth_bp.route("/register", methods=["POST"])
-def register():
-    data = request.get_json(silent=True) or {}
-
-    username  = (data.get("username") or "").strip()
-    email     = (data.get("email") or "").strip().lower()
-    password  = data.get("password", "")
-    full_name = (data.get("fullName") or "").strip()
-
-    if not username or not email or not password:
-        return jsonify({"error": "username, email and password are required"}), 400
-
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters"}), 400
-
-    if User.query.filter((User.username == username) | (User.email == email)).first():
-        return jsonify({"error": "Username or email already taken"}), 409
-
-    user = User(
-        username=username,
-        email=email,
-        password=_hash_password(password),
-        role="admin",  # first user via register is admin; teachers/students created by admin/teacher
-        full_name=full_name or username,
-    )
-    db.session.add(user)
-    db.session.commit()
-
-    token = create_access_token(identity=str(user.id))
-    return jsonify({"token": token, "user": user.to_dict(include_email=True)}), 201
 
 
 # ── POST /api/auth/login ──────────────────────────────────────────
