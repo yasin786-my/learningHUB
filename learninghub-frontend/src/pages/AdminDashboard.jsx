@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   HiOutlineUsers, HiOutlineBookOpen, HiOutlineClipboardCheck,
-  HiOutlinePlus, HiOutlineTrash, HiOutlineBan, HiOutlineLink
+  HiOutlinePlus, HiOutlineTrash, HiOutlineBan, HiOutlineLink, HiOutlineChartBar
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
@@ -15,12 +15,13 @@ import FloatingOrbs from '../components/common/FloatingOrbs';
 import GlassCard from '../components/common/GlassCard';
 import StatsCard from '../components/common/StatsCard';
 import Modal from '../components/common/Modal';
+import AdminAnalytics from '../components/charts/AdminAnalytics';
 
 export default function AdminDashboard() {
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [tab, setTab] = useState('users');
+  const [tab, setTab] = useState('analytics');
   const [userFilter, setUserFilter] = useState('all');
   const [loading, setLoading] = useState(false);
 
@@ -115,6 +116,7 @@ export default function AdminDashboard() {
   };
 
   const mainTabs = [
+    { key: 'analytics', label: 'Analytics', icon: HiOutlineChartBar },
     { key: 'users', label: 'Users', icon: HiOutlineUsers },
     { key: 'courses', label: 'Courses', icon: HiOutlineBookOpen },
   ];
@@ -159,6 +161,8 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+
+          {tab === 'analytics' && <AdminAnalytics />}
 
           {tab === 'users' && (
             <GlassCard hover={false} className="!p-0 overflow-hidden">

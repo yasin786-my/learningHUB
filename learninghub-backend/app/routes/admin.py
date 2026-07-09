@@ -3,6 +3,9 @@ LearningHUB — Admin routes
 """
 
 import re
+from collections import defaultdict
+from datetime import datetime
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import get_jwt_identity
 import bcrypt
@@ -169,3 +172,84 @@ def delete_course(course_id):
     db.session.delete(course)
     db.session.commit()
     return jsonify({"message": "Course deleted"}), 200
+
+
+def _last_six_months():
+    """Return (label, year, month) tuples for the last 6 calendar months."""
+    now = datetime.utcnow()
+    months = []
+    year, month = now.year, now.month
+    for _ in range(6):
+        label = datetime(year, month, 1).strftime("%b %Y")
+        months.append((label, year, month))
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+    return list(reversed(months))
+
+
+# ── GET /api/admin/analytics ──────────────────────────────────────
+@admin_bp.route("/analytics", methods=["GET"])
+@role_required("admin")
+def analytics():
+    """Chart data for the admin analytics dashboard."""
+    total_students = User.query.filter_by(role="student").count()
+    total_admins = User.query.filter_by(role="admin").count()
+    active_students = User.query.filter_by(role="student", is_active=True).count()
+
+    courses = Course.query.filter_by(is_published=True).order_by(Course.created_at.desc()).all()
+    course_stats = []
+    for course in courses:
+        enrollments = Enrollment.query.filter_by(course_id=course.id).all()
+        completed = sum(1 for e in enrollments if e.completed)
+        in_progress = sum(1 for e in enrollments if not e.completed and e.progress > 0)
+        started = len(enrollments)
+        not_started = max(0, total_students - started)
+        course_stats.append({
+            "courseId": course.id,
+            "title": course.title[:36] + ("…" if len(course.title) > 36 else ""),
+            "completed": completed,
+            "inProgress": in_progress,
+            "notStarted": not_started,
+        })
+
+    total_completed = Enrollment.query.filter_by(completed=True).count()
+    in_progress_count = Enrollment.query.filter(
+        Enrollment.completed.is_(False),
+        Enrollment.progress > 0,
+    ).count()
+    total_slots = total_students * len(courses)
+    started_count = Enrollment.query.count()
+    not_started_count = max(0, total_slots - started_count)
+
+    signup_buckets = defaultdict(int)
+    for user in User.query.filter_by(role="student").all():
+        if user.created_at:
+            signup_buckets[(user.created_at.year, user.created_at.month)] += 1
+
+    signups_by_month = [
+        {"month": label, "students": signup_buckets.get((y, m), 0)}
+        for label, y, m in _last_six_months()
+    ]
+
+    return jsonify({
+        "usersByRole": [
+            {"name": "Students", "value": total_students},
+            {"name": "Admins", "value": total_admins},
+        ],
+        "studentStatus": [
+            {"name": "Active", "value": active_students},
+            {"name": "Inactive", "value": max(0, total_students - active_students)},
+        ],
+        "progressOverview": [
+            {"name": "Completed", "value": total_completed},
+            {"name": "In Progress", "value": in_progress_count},
+            {"name": "Not Started", "value": not_started_count},
+        ],
+        "courseStats": course_stats,
+        "signupsByMonth": signups_by_month,
+        "completionRate": round(
+            (total_completed / total_slots * 100) if total_slots else 0, 1
+        ),
+    }), 200
