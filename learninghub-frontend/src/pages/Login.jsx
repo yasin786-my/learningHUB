@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiOutlineAcademicCap, HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
 import toast from 'react-hot-toast';
@@ -112,15 +112,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-dark-400">
-              Admin registration?{' '}
-              <Link to="/register" className="text-sapphire-400 hover:text-sapphire-300 transition-colors font-medium">
-                Create account
-              </Link>
-            </p>
-          </div>
         </div>
       </motion.div>
     </div>

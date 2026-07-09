@@ -41,15 +41,6 @@ export function AuthProvider({ children }) {
     return u;
   };
 
-  const register = async (data) => {
-    const res = await api.post('/auth/register', data);
-    const { token, user: u } = res.data;
-    localStorage.setItem('lhub_token', token);
-    localStorage.setItem('lhub_user', JSON.stringify(u));
-    setUser(u);
-    return u;
-  };
-
   const logout = () => {
     localStorage.removeItem('lhub_token');
     localStorage.removeItem('lhub_user');
@@ -57,7 +48,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
