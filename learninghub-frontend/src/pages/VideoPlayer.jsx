@@ -12,20 +12,19 @@ import Navbar from '../components/common/Navbar';
 import FloatingOrbs from '../components/common/FloatingOrbs';
 
 export default function VideoPlayer() {
-    const { enrollmentId } = useParams();
+    const { courseId } = useParams();
     const navigate = useNavigate();
-    const [enrollment, setEnrollment] = useState(null);
+    const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchEnrollment();
-    }, [enrollmentId]);
+        fetchCourse();
+    }, [courseId]);
 
-    const fetchEnrollment = async () => {
+    const fetchCourse = async () => {
         try {
-            const res = await api.get(`/student/courses`);
-            const found = res.data.find((e) => e.id === parseInt(enrollmentId));
-            setEnrollment(found);
+            const res = await api.get(`/student/courses/${courseId}`);
+            setItem(res.data);
         } catch {
             toast.error('Failed to load course');
             navigate('/student');
@@ -36,9 +35,9 @@ export default function VideoPlayer() {
 
     const markComplete = async () => {
         try {
-            await api.put(`/student/courses/${enrollmentId}/complete`);
+            const res = await api.put(`/student/courses/${courseId}/complete`);
+            setItem(res.data);
             toast.success('Course marked as completed!');
-            fetchEnrollment();
         } catch {
             toast.error('Failed to update');
         }
@@ -52,7 +51,7 @@ export default function VideoPlayer() {
         );
     }
 
-    if (!enrollment?.course) {
+    if (!item?.course) {
         return (
             <div className="min-h-screen bg-dark-950">
                 <Navbar />
@@ -63,7 +62,7 @@ export default function VideoPlayer() {
         );
     }
 
-    const course = enrollment.course;
+    const course = item.course;
     const videoIdMatch = course.youtubeUrl?.match(/(?:v=|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/);
     const videoId = videoIdMatch?.[1];
 
@@ -74,7 +73,6 @@ export default function VideoPlayer() {
                 <Navbar />
 
                 <main className="max-w-4xl mx-auto px-4 md:px-8 py-8 page-enter">
-                    {/* Back Button */}
                     <button
                         onClick={() => navigate('/student')}
                         className="flex items-center gap-2 text-sapphire-400 hover:text-sapphire-300 mb-6 transition-colors"
@@ -82,7 +80,6 @@ export default function VideoPlayer() {
                         <HiOutlineArrowLeft /> Back to Courses
                     </button>
 
-                    {/* Video Container */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -109,7 +106,6 @@ export default function VideoPlayer() {
                         )}
                     </motion.div>
 
-                    {/* Course Info */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -121,43 +117,42 @@ export default function VideoPlayer() {
                                 <h1 className="text-3xl font-bold text-white mb-2">{course.title}</h1>
                                 <p className="text-dark-300 mb-4">{course.description || 'No description provided'}</p>
                                 <div className="flex items-center gap-4">
-                                    <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${enrollment.completed
+                                    <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${item.completed
                                             ? 'bg-emerald-500/15 text-emerald-300'
                                             : 'bg-sapphire-500/15 text-sapphire-300'
                                         }`}>
-                                        {enrollment.completed ? '✓ Completed' : 'In Progress'}
+                                        {item.completed ? '✓ Completed' : 'In Progress'}
                                     </span>
                                     <span className="text-sm text-dark-400">
-                                        Progress: {enrollment.progress}%
+                                        Progress: {item.progress}%
                                     </span>
                                 </div>
                             </div>
                             <button
                                 onClick={markComplete}
-                                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${enrollment.completed
+                                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${item.completed
                                         ? 'btn-ghost'
                                         : 'btn-emerald'
                                     }`}
                             >
-                                <HiOutlineCheckCircle /> {enrollment.completed ? 'Mark as Incomplete' : 'Mark as Complete'}
+                                <HiOutlineCheckCircle /> {item.completed ? 'Mark as Incomplete' : 'Mark as Complete'}
                             </button>
                         </div>
                     </motion.div>
 
-                    {/* Teacher Info */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.2 }}
                         className="glass rounded-2xl p-6"
                     >
-                        <p className="text-dark-400 text-sm mb-2">Taught by</p>
+                        <p className="text-dark-400 text-sm mb-2">Course by</p>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sapphire-500 to-emerald-500 flex items-center justify-center text-sm font-bold text-white">
-                                {(course.teacherName || 'T')[0].toUpperCase()}
+                                {(course.creatorName || course.teacherName || 'A')[0].toUpperCase()}
                             </div>
                             <div>
-                                <p className="text-white font-medium">{course.teacherName || 'Unknown Teacher'}</p>
+                                <p className="text-white font-medium">{course.creatorName || course.teacherName || 'Admin'}</p>
                             </div>
                         </div>
                     </motion.div>

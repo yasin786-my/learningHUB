@@ -16,10 +16,10 @@ CREATE TABLE IF NOT EXISTS users (
   username    VARCHAR(80)  NOT NULL UNIQUE,
   email       VARCHAR(120) NOT NULL UNIQUE,
   password    VARCHAR(255) NOT NULL,
-  role        ENUM('admin','teacher','student') NOT NULL DEFAULT 'student',
+  role        ENUM('admin','student') NOT NULL DEFAULT 'student',
   full_name   VARCHAR(150) DEFAULT NULL,
   avatar_url  VARCHAR(500) DEFAULT NULL,
-  created_by  INT          DEFAULT NULL,          -- teacher who created the student
+  created_by  INT          DEFAULT NULL,
   is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS courses (
   description   TEXT,
   youtube_url   VARCHAR(500) NOT NULL,
   thumbnail_url VARCHAR(500) DEFAULT NULL,
-  teacher_id    INT          NOT NULL,
+  teacher_id    INT          NOT NULL,              -- admin who created the course
   is_published  BOOLEAN      NOT NULL DEFAULT TRUE,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -70,5 +70,5 @@ CREATE TABLE IF NOT EXISTS enrollments (
 -- Seed an admin account  (password: admin123)
 -- The hash below is bcrypt for "admin123"
 -- ============================================
--- NOTE: Generate a proper hash at runtime via the /api/auth/register endpoint
---       or the Flask CLI seed command.  The INSERT below is a convenience placeholder.
+-- NOTE: Admin is seeded from ADMIN_EMAIL / ADMIN_PASSWORD on first startup.
+-- Students self-register via POST /api/auth/register.

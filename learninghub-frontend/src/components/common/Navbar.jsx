@@ -6,15 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { HiOutlineLogout, HiOutlineAcademicCap } from 'react-icons/hi';
 
-const roleColors = {
-  admin:   'text-purple-400',
-  teacher: 'text-sapphire-400',
-  student: 'text-emerald-400',
-};
-
 const roleBadgeBg = {
   admin:   'bg-purple-500/10 border-purple-500/20 text-purple-300',
-  teacher: 'bg-sapphire-500/10 border-sapphire-500/20 text-sapphire-300',
   student: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300',
 };
 

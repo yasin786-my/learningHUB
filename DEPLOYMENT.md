@@ -1,240 +1,363 @@
-# LearningHUB — Production Deployment Guide
+# LearningHUB — Deployment Guide
 
-Deploy the full stack on free tiers:
+This guide walks you through deploying LearningHUB to production using free-tier hosting.
 
-| Layer    | Service  | Role                          |
-|----------|----------|-------------------------------|
-| Frontend | Vercel   | React + Vite SPA              |
-| Backend  | Render   | Flask API (Gunicorn)          |
-| Database | Supabase | PostgreSQL                    |
+## Stack overview
 
-**Deploy order:** Supabase → Render (backend) → Vercel (frontend)
+| Component | Platform | Technology |
+|-----------|----------|------------|
+| Frontend | [Vercel](https://vercel.com) | React 18, Vite, Tailwind CSS |
+| Backend | [Render](https://render.com) | Flask 3, Gunicorn, JWT |
+| Database | [Supabase](https://supabase.com) | PostgreSQL |
+
+```
+┌─────────────┐     HTTPS      ┌──────────────┐     DATABASE_URL     ┌──────────────┐
+│   Vercel    │ ─────────────► │    Render    │ ───────────────────► │   Supabase   │
+│  (React)    │  /api/* calls  │   (Flask)    │      PostgreSQL      │  (Database)  │
+└─────────────┘                └──────────────┘                      └──────────────┘
+```
+
+## How the app works in production
+
+- **Admin** — Created automatically on first backend startup from `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Manages users and creates YouTube courses. All published courses are visible to every student.
+- **Student** — Self-registers at `/register` with username, email, and password. Browses all published courses and tracks their own progress.
+
+There is no public admin registration and no teacher role.
 
 ---
 
-## Prerequisites
+## Before you start
 
-- GitHub repo with this project pushed
-- Free accounts on [Supabase](https://supabase.com), [Render](https://render.com), and [Vercel](https://vercel.com)
-- A strong admin password for the initial seeded account
+You will need:
+
+- This repository pushed to GitHub
+- Free accounts on Supabase, Render, and Vercel
+- A strong password for the seeded admin account
+
+**Deploy in this order:** Supabase → Render → Vercel
 
 ---
 
-## 1. Supabase (Database)
+## Step 1 — Set up Supabase (database)
 
-### Create the project
+### 1.1 Create a project
 
-1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) → **New project**
-2. Choose a name, database password, and region
-3. Wait for the project to finish provisioning
+1. Open the [Supabase Dashboard](https://supabase.com/dashboard)
+2. Click **New project**
+3. Set a project name, database password, and region
+4. Wait until provisioning completes
 
-### Get the connection string
+### 1.2 Copy the connection string
 
-1. Open **Project Settings** → **Database**
+1. Go to **Project Settings** → **Database**
 2. Under **Connection string**, select **URI**
-3. Choose **Session pooler** (recommended for Render free tier)
-4. Copy the URI — it looks like:
+3. Choose **Session pooler** (best for Render free tier)
+4. Copy the URI and replace `[YOUR-PASSWORD]` with your database password
 
-   ```
-   postgresql://postgres.[project-ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres
-   ```
+Example format:
 
-5. Replace `[YOUR-PASSWORD]` with your database password
+```
+postgresql://postgres.abcdefghijklmnop:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
+```
 
-> **Note:** Tables are created automatically on first backend startup via SQLAlchemy (`db.create_all()`). You do not need to run `schema.sql` manually unless you prefer manual setup.
+Save this value — you will paste it into Render as `DATABASE_URL`.
 
-### Supabase environment variables
+### 1.3 Schema
 
-Supabase does not need application env vars. You only copy `DATABASE_URL` into Render (next step).
-
----
-
-## 2. Render (Backend)
-
-### Option A — Blueprint (recommended)
-
-1. Go to [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint**
-2. Connect your GitHub repo
-3. Render reads `render.yaml` at the repo root and creates the web service
-
-### Option B — Manual web service
-
-1. **New** → **Web Service** → connect your repo
-2. Configure:
-
-   | Setting          | Value                                      |
-   |------------------|--------------------------------------------|
-   | Root Directory   | `learninghub-backend`                      |
-   | Runtime          | Python                                     |
-   | Build Command    | `pip install -r requirements.txt`          |
-   | Start Command    | `gunicorn "run:app" --bind 0.0.0.0:$PORT --workers 2 --timeout 120` |
-   | Health Check Path| `/api/health`                              |
-
-### Render environment variables
-
-In the Render service → **Environment**, add:
-
-| Variable           | Value                                                                 |
-|--------------------|-----------------------------------------------------------------------|
-| `DATABASE_URL`     | Supabase Session pooler URI (from step 1)                             |
-| `SECRET_KEY`       | Long random string (or let `render.yaml` auto-generate)               |
-| `JWT_SECRET_KEY`   | Long random string (or let `render.yaml` auto-generate)               |
-| `ADMIN_EMAIL`      | Email for the initial admin account                                   |
-| `ADMIN_PASSWORD`   | Strong password for the initial admin                                 |
-| `ADMIN_USERNAME`   | `admin` (optional — defaults to the part before `@` in `ADMIN_EMAIL`) |
-| `ADMIN_FULL_NAME`  | `System Admin` (optional)                                             |
-| `CORS_ORIGINS`     | Your Vercel URL, e.g. `https://your-app.vercel.app`                   |
-
-> Set `CORS_ORIGINS` after you know your Vercel URL. You can update it later if the frontend URL changes.
-
-### Deploy and verify
-
-1. Click **Deploy** (or push to the connected branch)
-2. When the deploy finishes, open:
-
-   ```
-   https://your-service.onrender.com/api/health
-   ```
-
-   Expected response:
-
-   ```json
-   { "status": "ok", "service": "LearningHUB API" }
-   ```
-
-3. On first successful startup, the backend seeds the admin user if no admin exists in the database.
-
-> **Free tier note:** Render free services spin down after inactivity. The first request after idle may take 30–60 seconds.
+You do **not** need to run `schema.sql` manually. On first startup the Flask backend calls `db.create_all()` and creates all tables automatically.
 
 ---
 
-## 3. Vercel (Frontend)
+## Step 2 — Deploy the backend on Render
 
-### Import the project
+### 2.1 Create the service
 
-1. Go to [vercel.com/dashboard](https://vercel.com/dashboard) → **Add New** → **Project**
-2. Import your GitHub repo
-3. Configure:
+**Option A — Blueprint (recommended)**
 
-   | Setting            | Value                    |
-   |--------------------|--------------------------|
-   | Root Directory     | `learninghub-frontend`   |
-   | Framework Preset   | Vite                     |
-   | Build Command      | `npm run build` (default)|
-   | Output Directory   | `dist` (default)         |
+1. Open [Render Dashboard](https://dashboard.render.com)
+2. Click **New** → **Blueprint**
+3. Connect your GitHub repository
+4. Render reads `render.yaml` from the repo root and provisions the service
 
-### Vercel environment variables
+**Option B — Manual setup**
 
-| Variable        | Value                                              |
-|-----------------|----------------------------------------------------|
-| `VITE_API_URL`  | `https://your-service.onrender.com/api`            |
+1. Click **New** → **Web Service**
+2. Connect your GitHub repository
+3. Use these settings:
 
-Use your actual Render backend URL. **No trailing slash.**
+| Field | Value |
+|-------|-------|
+| Root Directory | `learninghub-backend` |
+| Runtime | Python |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `gunicorn "run:app" --bind 0.0.0.0:$PORT --workers 2 --timeout 120` |
+| Health Check Path | `/api/health` |
 
-### SPA routing
+The entry point is `run.py`, which exposes `app = create_app()` for Gunicorn.
 
-`learninghub-frontend/vercel.json` rewrites all routes to `index.html` so client-side routing works (no 404 on refresh).
+### 2.2 Set environment variables
 
-### Deploy and verify
+In your Render service, go to **Environment** and add:
 
-1. Deploy the project
-2. Open your Vercel URL → you should land on `/login`
-3. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from Render
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | Supabase Session pooler URI from Step 1 |
+| `SECRET_KEY` | Yes | Random secret for Flask sessions |
+| `JWT_SECRET_KEY` | Yes | Random secret for JWT tokens |
+| `ADMIN_EMAIL` | Yes | Email for the seeded admin account |
+| `ADMIN_PASSWORD` | Yes | Password for the seeded admin account |
+| `ADMIN_USERNAME` | No | Defaults to the part before `@` in `ADMIN_EMAIL` |
+| `ADMIN_FULL_NAME` | No | Defaults to `System Admin` |
+| `CORS_ORIGINS` | Yes | Your Vercel frontend URL (set after Step 3) |
 
----
+`render.yaml` auto-generates `SECRET_KEY` and `JWT_SECRET_KEY` if you use the Blueprint. You must still add `DATABASE_URL`, admin credentials, and `CORS_ORIGINS` manually.
 
-## 4. Final checklist
-
-- [ ] Supabase project created; `DATABASE_URL` copied
-- [ ] Render backend deployed; `/api/health` returns OK
-- [ ] `ADMIN_EMAIL` and `ADMIN_PASSWORD` set on Render
-- [ ] Vercel frontend deployed with `VITE_API_URL` pointing to Render
-- [ ] `CORS_ORIGINS` on Render includes your Vercel URL
-- [ ] Admin login works at `/login`
-- [ ] Admin can create teachers from the dashboard
-
----
-
-## Environment variable reference
-
-### Render (backend)
+**Copy-paste template for Render:**
 
 ```env
 DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-SECRET_KEY=your-random-secret
-JWT_SECRET_KEY=your-jwt-secret
+SECRET_KEY=generate-a-long-random-string
+JWT_SECRET_KEY=generate-another-long-random-string
 ADMIN_EMAIL=admin@yourdomain.com
-ADMIN_PASSWORD=your-strong-password
+ADMIN_PASSWORD=your-strong-admin-password
 ADMIN_USERNAME=admin
 ADMIN_FULL_NAME=System Admin
 CORS_ORIGINS=https://your-app.vercel.app
 ```
 
-### Vercel (frontend)
+### 2.3 Deploy and verify
+
+1. Trigger a deploy (push to your connected branch or click **Manual Deploy**)
+2. Open `https://your-service.onrender.com/api/health`
+3. Confirm the response:
+
+```json
+{ "status": "ok", "service": "LearningHUB API" }
+```
+
+4. Check Render logs for: `Seeded initial admin account for admin@yourdomain.com`
+
+> **Free tier:** Render spins down idle services. The first request after sleep can take 30–60 seconds.
+
+---
+
+## Step 3 — Deploy the frontend on Vercel
+
+### 3.1 Import the project
+
+1. Open [Vercel Dashboard](https://vercel.com/dashboard)
+2. Click **Add New** → **Project**
+3. Import your GitHub repository
+4. Configure:
+
+| Field | Value |
+|-------|-------|
+| Root Directory | `learninghub-frontend` |
+| Framework Preset | Vite |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+
+### 3.2 Set environment variables
+
+| Variable | Value |
+|----------|-------|
+| `VITE_API_URL` | `https://your-service.onrender.com/api` |
+
+Use your actual Render URL. **No trailing slash.**
 
 ```env
 VITE_API_URL=https://your-service.onrender.com/api
 ```
 
-### Local development
+### 3.3 SPA routing
 
-Copy examples and adjust:
+The file `learninghub-frontend/vercel.json` is already configured:
 
-```bash
-# Backend
-cp learninghub-backend/.env.example learninghub-backend/.env
-
-# Frontend
-cp learninghub-frontend/.env.example learninghub-frontend/.env
+```json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
 ```
 
-For local dev without Supabase, leave `DATABASE_URL` unset and use the `MYSQL_*` variables in `learninghub-backend/.env`.
+This prevents 404 errors when refreshing routes like `/login`, `/register`, or `/student`.
+
+### 3.4 Deploy and connect CORS
+
+1. Deploy the frontend
+2. Copy your Vercel URL (e.g. `https://learninghub.vercel.app`)
+3. Go back to Render → **Environment** → set `CORS_ORIGINS` to that URL
+4. Redeploy the backend so CORS takes effect
+
+---
+
+## Step 4 — Verify everything works
+
+### Admin flow
+
+1. Open `https://your-app.vercel.app/login`
+2. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+3. You should land on the Admin Dashboard
+4. Go to **Courses** → add a YouTube course
+5. The course is immediately available to all students
+
+### Student flow
+
+1. Open `https://your-app.vercel.app/register`
+2. Create a student account (username, email, password)
+3. You should land on the Student Dashboard with all published courses visible
+4. Open any course to watch and mark progress
+
+### Checklist
+
+- [ ] Supabase project created; `DATABASE_URL` saved
+- [ ] Render backend live; `/api/health` returns OK
+- [ ] `ADMIN_EMAIL` and `ADMIN_PASSWORD` set before first deploy
+- [ ] Admin login works at `/login`
+- [ ] Student registration works at `/register`
+- [ ] Vercel deployed with correct `VITE_API_URL`
+- [ ] `CORS_ORIGINS` on Render matches Vercel URL exactly
+- [ ] Admin can create courses
+- [ ] Student sees all published courses after login
+
+---
+
+## Environment variables — quick reference
+
+### Render (backend)
+
+| Variable | Example |
+|----------|---------|
+| `DATABASE_URL` | `postgresql://postgres.xxx:pass@...pooler.supabase.com:6543/postgres` |
+| `SECRET_KEY` | `8f3a9c2e...` |
+| `JWT_SECRET_KEY` | `b7d1e4f0...` |
+| `ADMIN_EMAIL` | `admin@school.edu` |
+| `ADMIN_PASSWORD` | `SecurePass123!` |
+| `ADMIN_USERNAME` | `admin` |
+| `ADMIN_FULL_NAME` | `System Admin` |
+| `CORS_ORIGINS` | `https://learninghub.vercel.app` |
+
+### Vercel (frontend)
+
+| Variable | Example |
+|----------|---------|
+| `VITE_API_URL` | `https://learninghub-backend.onrender.com/api` |
+
+### Supabase
+
+No application env vars needed. Only copy the database URI into Render.
+
+---
+
+## Local development
+
+### Backend
+
+```bash
+cd learninghub-backend
+cp .env.example .env
+pip install -r requirements.txt
+python run.py
+```
+
+API runs at `http://localhost:5000`.
+
+**Database options:**
+
+- **Supabase locally** — set `DATABASE_URL` in `.env`
+- **Local MySQL** — leave `DATABASE_URL` unset and configure `MYSQL_*` variables instead
+
+### Frontend
+
+```bash
+cd learninghub-frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+App runs at `http://localhost:5173`.
+
+Default `.env` values:
+
+```env
+# Backend (.env)
+CORS_ORIGINS=http://localhost:5173
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=change-me-strong-password
+
+# Frontend (.env)
+VITE_API_URL=http://localhost:5000/api
+```
 
 ---
 
 ## Troubleshooting
 
-### Backend fails to start on Render
+### Backend won't start on Render
 
-- Confirm `DATABASE_URL` uses `postgresql://` (not `postgres://`) — the app normalizes this automatically
-- For Supabase, prefer the **Session pooler** URI (port `6543`)
-- Check Render logs for connection or import errors
+| Symptom | Fix |
+|---------|-----|
+| Database connection error | Use the Supabase **Session pooler** URI (port `6543`) |
+| `postgres://` vs `postgresql://` | The app normalizes this automatically — either works |
+| Import / dependency errors | Check Render build logs; confirm `requirements.txt` installs cleanly |
+| SSL errors with Supabase | Ensure the hostname contains `supabase` or add `?sslmode=require` to the URI |
 
 ### CORS errors in the browser
 
-- Ensure `CORS_ORIGINS` on Render exactly matches your Vercel URL (including `https://`)
-- No trailing slash on the origin
+- `CORS_ORIGINS` must exactly match your Vercel URL: `https://your-app.vercel.app`
+- No trailing slash
 - Redeploy the backend after changing `CORS_ORIGINS`
 
-### Cannot log in as admin
+### Admin login fails
 
-- Confirm `ADMIN_EMAIL` and `ADMIN_PASSWORD` were set **before** the first deploy
-- If the database already has users but no admin, set env vars and clear the `users` table in Supabase, then redeploy
+- Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` **before** the first deploy
 - Check Render logs for `Seeded initial admin account for ...`
+- If the database has users but no admin, clear the `users` table in Supabase SQL Editor and redeploy
+
+### Student registration fails
+
+- Confirm the backend is running (`/api/health`)
+- Check that `VITE_API_URL` on Vercel points to the correct Render URL
+- Username and email must be unique; password must be at least 6 characters
 
 ### 404 on page refresh (Vercel)
 
-- Confirm `vercel.json` exists in `learninghub-frontend/`
-- Redeploy the frontend after adding or changing `vercel.json`
+- Confirm `learninghub-frontend/vercel.json` exists
+- Redeploy the frontend
 
-### Slow first API request
+### Slow API responses
 
-- Normal on Render free tier — the service wakes from sleep. Subsequent requests are faster.
+- Normal on Render free tier after idle — the service is waking up
+- Subsequent requests are faster
+
+### Existing database with old `teacher` role
+
+If you migrated from an older version that used a teacher role, delete or update any `teacher` rows in the `users` table before redeploying. The current schema only supports `admin` and `student`.
 
 ---
 
-## Architecture overview
+## Project files reference
 
-```
-Browser (Vercel)
-    │
-    │  HTTPS  VITE_API_URL → /api/*
-    ▼
-Render (Gunicorn → Flask)
-    │
-    │  DATABASE_URL (SSL)
-    ▼
-Supabase PostgreSQL
-```
+| File | Purpose |
+|------|---------|
+| `render.yaml` | Render Blueprint — Python service, Gunicorn, health check |
+| `learninghub-backend/run.py` | Flask entry point (`run:app`) |
+| `learninghub-backend/requirements.txt` | Python deps including `psycopg2-binary` and `gunicorn` |
+| `learninghub-backend/.env.example` | Backend env var template |
+| `learninghub-frontend/vercel.json` | SPA rewrite rules for client-side routing |
+| `learninghub-frontend/.env.example` | Frontend env var template |
 
-**Auth flow:** Public registration is disabled. The initial admin is seeded from env vars on startup. Teachers and students are created by authenticated admin/teacher API routes.
+---
+
+## API endpoints (production)
+
+| Endpoint | Access | Purpose |
+|----------|--------|---------|
+| `GET /api/health` | Public | Health check |
+| `POST /api/auth/register` | Public | Student self-registration |
+| `POST /api/auth/login` | Public | Login (admin or student) |
+| `GET /api/auth/me` | Authenticated | Current user profile |
+| `GET /api/admin/*` | Admin only | Users and courses |
+| `GET /api/student/*` | Student only | All published courses, progress |

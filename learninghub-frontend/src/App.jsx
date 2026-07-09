@@ -9,8 +9,8 @@ import ProtectedRoute from './routes/ProtectedRoute';
 
 // Pages
 import Login from './pages/Login';
+import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
-import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import VideoPlayer from './pages/VideoPlayer';
 
@@ -21,6 +21,7 @@ export default function App() {
                 <Routes>
                     {/* Public Routes */}
                     <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
 
                     {/* Protected Routes */}
                     <Route
@@ -28,14 +29,6 @@ export default function App() {
                         element={
                             <ProtectedRoute allowedRoles={['admin']}>
                                 <AdminDashboard />
-                            </ProtectedRoute>
-                        }
-                    />
-                    <Route
-                        path="/teacher"
-                        element={
-                            <ProtectedRoute allowedRoles={['teacher']}>
-                                <TeacherDashboard />
                             </ProtectedRoute>
                         }
                     />
@@ -48,7 +41,7 @@ export default function App() {
                         }
                     />
                     <Route
-                        path="/watch/:enrollmentId"
+                        path="/watch/:courseId"
                         element={
                             <ProtectedRoute allowedRoles={['student']}>
                                 <VideoPlayer />

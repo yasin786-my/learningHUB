@@ -13,7 +13,7 @@ class User(db.Model):
     username   = db.Column(db.String(80),  nullable=False, unique=True)
     email      = db.Column(db.String(120), nullable=False, unique=True)
     password   = db.Column(db.String(255), nullable=False)
-    role       = db.Column(db.Enum("admin", "teacher", "student"), nullable=False, default="student")
+    role       = db.Column(db.Enum("admin", "student"), nullable=False, default="student")
     full_name  = db.Column(db.String(150))
     avatar_url = db.Column(db.String(500))
     created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
@@ -22,7 +22,6 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    courses     = db.relationship("Course", backref="teacher", lazy=True)
     enrollments = db.relationship("Enrollment", backref="student", lazy=True)
 
     def to_dict(self, include_email=False):
@@ -53,6 +52,7 @@ class Course(db.Model):
     created_at    = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    creator = db.relationship("User", foreign_keys=[teacher_id], backref="created_courses")
     enrollments = db.relationship("Enrollment", backref="course", lazy=True)
 
     def to_dict(self):
@@ -63,7 +63,8 @@ class Course(db.Model):
             "youtubeUrl":   self.youtube_url,
             "thumbnailUrl": self.thumbnail_url,
             "teacherId":    self.teacher_id,
-            "teacherName":  self.teacher.full_name if self.teacher else None,
+            "teacherName":  self.creator.full_name if self.creator else None,
+            "creatorName":  self.creator.full_name if self.creator else None,
             "isPublished":  self.is_published,
             "createdAt":    self.created_at.isoformat() if self.created_at else None,
         }

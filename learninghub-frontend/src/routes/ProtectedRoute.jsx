@@ -8,11 +8,10 @@ import { useAuth } from '../context/AuthContext';
 
 const roleDashboards = {
   admin:   '/admin',
-  teacher: '/teacher',
   student: '/student',
 };
 
-export default function ProtectedRoute({ children, roles }) {
+export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -27,7 +26,7 @@ export default function ProtectedRoute({ children, roles }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles && !roles.includes(user.role)) {
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={roleDashboards[user.role] || '/login'} replace />;
   }
 
