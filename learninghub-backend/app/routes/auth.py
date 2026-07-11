@@ -2,7 +2,14 @@
 LearningHUB — Authentication routes (login / register / me)
 """
 
+import hashlib
+import hmac
+import os
 import re
+import secrets
+import smtplib
+from datetime import datetime, timedelta
+from email.message import EmailMessage
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import (
     create_access_token, jwt_required, get_jwt_identity
@@ -10,7 +17,7 @@ from flask_jwt_extended import (
 import bcrypt
 
 from app import db
-from app.models import User
+from app.models import PendingRegistration, User
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -36,33 +43,152 @@ def _extract_youtube_id(url: str):
     return None
 
 
+OTP_EXPIRY_MINUTES = 10
+OTP_RESEND_SECONDS = 60
+OTP_MAX_ATTEMPTS = 5
+
+
+def _otp_hash(email: str, code: str) -> str:
+    secret = os.getenv("SECRET_KEY", "dev-secret")
+    return hashlib.sha256(f"{email}:{code}:{secret}".encode("utf-8")).hexdigest()
+
+
+def _send_registration_otp(email: str, code: str) -> None:
+    sender = os.getenv("SMTP_SENDER", "").strip()
+    app_password = os.getenv("SMTP_APP_PASSWORD", "").strip()
+    if not sender or not app_password:
+        raise RuntimeError("Email service is not configured")
+
+    message = EmailMessage()
+    message["Subject"] = "Your LearningHUB verification code"
+    message["From"] = sender
+    message["To"] = email
+    message.set_content(
+        f"Your LearningHUB verification code is: {code}\n\n"
+        f"This code expires in {OTP_EXPIRY_MINUTES} minutes. If you did not start registration, you can ignore this email."
+    )
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as smtp:
+        smtp.login(sender, app_password)
+        smtp.send_message(message)
+
+
+def _new_otp() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _username_for_email(email: str) -> str:
+    base = re.sub(r"[^a-z0-9_]", "", email.split("@", 1)[0].lower())[:60] or "student"
+    candidate = base
+    suffix = 1
+    while User.query.filter_by(username=candidate).first():
+        candidate = f"{base[:75 - len(str(suffix))]}{suffix}"
+        suffix += 1
+    return candidate
+
+
 # ── POST /api/auth/register — student self-registration ───────────
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json(silent=True) or {}
 
-    username  = (data.get("username") or "").strip()
-    email     = (data.get("email") or "").strip().lower()
-    password  = data.get("password", "")
     full_name = (data.get("fullName") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password", "")
 
-    if not username or not email or not password:
-        return jsonify({"error": "username, email and password are required"}), 400
+    if not full_name or not email or not password:
+        return jsonify({"error": "Name, email and password are required"}), 400
 
     if len(password) < 6:
         return jsonify({"error": "Password must be at least 6 characters"}), 400
 
-    if User.query.filter((User.username == username) | (User.email == email)).first():
-        return jsonify({"error": "Username or email already taken"}), 409
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return jsonify({"error": "Enter a valid email address"}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "An account with this email already exists"}), 409
+
+    code = _new_otp()
+    pending = PendingRegistration.query.filter_by(email=email).first()
+    if not pending:
+        pending = PendingRegistration(email=email, full_name=full_name, password_hash="", otp_hash="", expires_at=datetime.utcnow())
+        db.session.add(pending)
+
+    pending.full_name = full_name
+    pending.password_hash = _hash_password(password)
+    pending.otp_hash = _otp_hash(email, code)
+    pending.expires_at = datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    pending.last_sent_at = datetime.utcnow()
+    pending.attempts = 0
+    db.session.commit()
+
+    try:
+        _send_registration_otp(email, code)
+    except (OSError, smtplib.SMTPException, RuntimeError):
+        return jsonify({"error": "Unable to send the verification email. Please try again later."}), 503
+
+    return jsonify({"message": "Verification code sent", "email": email}), 200
+
+
+@auth_bp.route("/register/resend", methods=["POST"])
+def resend_registration_code():
+    email = (request.get_json(silent=True) or {}).get("email", "").strip().lower()
+    pending = PendingRegistration.query.filter_by(email=email).first()
+    if not pending:
+        return jsonify({"error": "Start registration again to receive a code"}), 404
+
+    seconds_since_send = (datetime.utcnow() - pending.last_sent_at).total_seconds()
+    if seconds_since_send < OTP_RESEND_SECONDS:
+        return jsonify({"error": f"Please wait {int(OTP_RESEND_SECONDS - seconds_since_send) + 1} seconds before resending"}), 429
+
+    code = _new_otp()
+    pending.otp_hash = _otp_hash(email, code)
+    pending.expires_at = datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    pending.last_sent_at = datetime.utcnow()
+    pending.attempts = 0
+    db.session.commit()
+
+    try:
+        _send_registration_otp(email, code)
+    except (OSError, smtplib.SMTPException, RuntimeError):
+        return jsonify({"error": "Unable to resend the verification email. Please try again later."}), 503
+
+    return jsonify({"message": "A new verification code has been sent"}), 200
+
+
+@auth_bp.route("/register/verify", methods=["POST"])
+def verify_registration():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    code = str(data.get("code") or "").strip()
+    pending = PendingRegistration.query.filter_by(email=email).first()
+
+    if not pending or pending.expires_at < datetime.utcnow():
+        return jsonify({"error": "This verification code has expired. Please register again."}), 400
+    if not re.fullmatch(r"\d{6}", code):
+        return jsonify({"error": "Enter the 6-digit verification code"}), 400
+    if pending.attempts >= OTP_MAX_ATTEMPTS:
+        return jsonify({"error": "Too many incorrect attempts. Request a new code."}), 429
+
+    pending.attempts += 1
+    if not hmac.compare_digest(pending.otp_hash, _otp_hash(email, code)):
+        db.session.commit()
+        return jsonify({"error": "Incorrect verification code"}), 400
+
+    if User.query.filter_by(email=email).first():
+        db.session.delete(pending)
+        db.session.commit()
+        return jsonify({"error": "An account with this email already exists"}), 409
 
     user = User(
-        username=username,
+        username=_username_for_email(email),
         email=email,
-        password=_hash_password(password),
+        password=pending.password_hash,
         role="student",
-        full_name=full_name or username,
+        full_name=pending.full_name,
     )
     db.session.add(user)
+    db.session.delete(pending)
     db.session.commit()
 
     token = create_access_token(identity=str(user.id))

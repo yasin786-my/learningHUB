@@ -41,13 +41,23 @@ export function AuthProvider({ children }) {
     return u;
   };
 
-  const register = async (data) => {
+  const initiateRegistration = async (data) => {
     const res = await api.post('/auth/register', data);
+    return res.data;
+  };
+
+  const verifyRegistration = async (email, code) => {
+    const res = await api.post('/auth/register/verify', { email, code });
     const { token, user: u } = res.data;
     localStorage.setItem('lhub_token', token);
     localStorage.setItem('lhub_user', JSON.stringify(u));
     setUser(u);
     return u;
+  };
+
+  const resendRegistrationCode = async (email) => {
+    const res = await api.post('/auth/register/resend', { email });
+    return res.data;
   };
 
   const logout = () => {
@@ -57,7 +67,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, initiateRegistration, verifyRegistration, resendRegistrationCode, logout }}>
       {children}
     </AuthContext.Provider>
   );

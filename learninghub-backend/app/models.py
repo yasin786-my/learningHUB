@@ -40,6 +40,20 @@ class User(db.Model):
         return data
 
 
+class PendingRegistration(db.Model):
+    """Temporary registration data kept until the email OTP is verified."""
+    __tablename__ = "pending_registrations"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    full_name = db.Column(db.String(150), nullable=False)
+    email = db.Column(db.String(120), nullable=False, unique=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    otp_hash = db.Column(db.String(64), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    last_sent_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+
+
 class Course(db.Model):
     __tablename__ = "courses"
 
