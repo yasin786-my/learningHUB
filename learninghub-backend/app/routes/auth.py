@@ -10,7 +10,7 @@ import secrets
 import smtplib
 from datetime import datetime, timedelta
 from email.message import EmailMessage
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import (
     create_access_token, jwt_required, get_jwt_identity
 )
@@ -124,7 +124,8 @@ def register():
 
     try:
         _send_registration_otp(email, code)
-    except (OSError, smtplib.SMTPException, RuntimeError):
+    except (OSError, smtplib.SMTPException, RuntimeError) as exc:
+        current_app.logger.error("Registration OTP send failed for %s: %r", email, exc)
         return jsonify({"error": "Unable to send the verification email. Please try again later."}), 503
 
     return jsonify({"message": "Verification code sent", "email": email}), 200
@@ -150,7 +151,8 @@ def resend_registration_code():
 
     try:
         _send_registration_otp(email, code)
-    except (OSError, smtplib.SMTPException, RuntimeError):
+    except (OSError, smtplib.SMTPException, RuntimeError) as exc:
+        current_app.logger.error("Registration OTP resend failed for %s: %r", email, exc)
         return jsonify({"error": "Unable to resend the verification email. Please try again later."}), 503
 
     return jsonify({"message": "A new verification code has been sent"}), 200
