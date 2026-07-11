@@ -13,7 +13,8 @@ class User(db.Model):
     username   = db.Column(db.String(80),  nullable=False, unique=True)
     email      = db.Column(db.String(120), nullable=False, unique=True)
     password   = db.Column(db.String(255), nullable=False)
-    role       = db.Column(db.Enum("admin", "student"), nullable=False, default="student")
+    # PostgreSQL requires a named ENUM type (unlike MySQL).
+    role       = db.Column(db.Enum("admin", "student", name="user_role"), nullable=False, default="student")
     full_name  = db.Column(db.String(150))
     avatar_url = db.Column(db.String(500))
     created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"))
