@@ -119,6 +119,9 @@ export default function VideoPlayer() {
                     >
                         <div className="flex items-start justify-between gap-4">
                             <div>
+                                <span className="mb-3 inline-flex rounded-full bg-sapphire-500/15 px-3 py-1 text-xs font-medium text-sapphire-300">
+                                    {playlistId ? 'YouTube Playlist' : 'YouTube Video'}
+                                </span>
                                 <h1 className="text-3xl font-bold text-white mb-2">{course.title}</h1>
                                 <p className="text-dark-300 mb-4">{course.description || 'No description provided'}</p>
                                 <div className="flex items-center gap-4">

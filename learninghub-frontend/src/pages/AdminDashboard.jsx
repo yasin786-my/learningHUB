@@ -278,6 +278,9 @@ export default function AdminDashboard() {
                           <HiOutlineBookOpen className="text-4xl" />
                         </div>
                       )}
+                      <span className="absolute top-3 left-3 z-10 rounded-full bg-black/65 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                        {isPlaylistUrl(c.youtubeUrl) ? 'Playlist' : 'Video'}
+                      </span>
                       <div className="absolute inset-0 bg-gradient-to-t from-dark-950/80 to-transparent" />
                     </div>
                     <div className="p-4">

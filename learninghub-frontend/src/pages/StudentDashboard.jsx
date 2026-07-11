@@ -95,6 +95,7 @@ export default function StudentDashboard() {
                   const thumb = videoId
                     ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
                     : course.thumbnailUrl;
+                  const isPlaylist = /[?&]list=[^&]+/.test(course.youtubeUrl || '');
 
                   return (
                     <TiltedCard
@@ -129,6 +130,9 @@ export default function StudentDashboard() {
                               <HiOutlineCheckCircle /> Done
                             </div>
                           )}
+                          <span className="absolute top-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                            {isPlaylist ? 'Playlist' : 'Video'}
+                          </span>
                         </div>
 
                         <div className="p-4">
