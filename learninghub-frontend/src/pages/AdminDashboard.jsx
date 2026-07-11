@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
 
   const [showCourseModal, setShowCourseModal] = useState(false);
-  const [courseForm, setCourseForm] = useState({ title: '', description: '', youtubeUrl: '' });
+  const [courseForm, setCourseForm] = useState({ title: '', description: '', youtubeUrl: '', thumbnailUrl: '' });
 
   useEffect(() => {
     fetchOverview();
@@ -90,7 +90,7 @@ export default function AdminDashboard() {
       await api.post('/admin/courses', courseForm);
       toast.success('Course created!');
       setShowCourseModal(false);
-      setCourseForm({ title: '', description: '', youtubeUrl: '' });
+      setCourseForm({ title: '', description: '', youtubeUrl: '', thumbnailUrl: '' });
       fetchCourses();
       fetchOverview();
     } catch (err) {
@@ -114,6 +114,9 @@ export default function AdminDashboard() {
     const m = url?.match(/(?:v=|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/);
     return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : '';
   };
+
+  const isPlaylistUrl = (url) => /[?&]list=[^&]+/.test(url || '');
+  const thumbnailPreview = courseForm.thumbnailUrl || extractThumbnail(courseForm.youtubeUrl);
 
   const mainTabs = [
     { key: 'analytics', label: 'Analytics', icon: HiOutlineChartBar },
@@ -314,12 +317,21 @@ export default function AdminDashboard() {
               className="input-glass" placeholder="React Crash Course" required />
           </div>
           <div>
-            <label className="block text-sm text-dark-200 mb-1">YouTube URL *</label>
+            <label className="block text-sm text-dark-200 mb-1">YouTube video or playlist URL *</label>
             <input type="url" value={courseForm.youtubeUrl}
               onChange={(e) => setCourseForm({ ...courseForm, youtubeUrl: e.target.value })}
-              className="input-glass" placeholder="https://www.youtube.com/watch?v=..." required />
-            {courseForm.youtubeUrl && extractThumbnail(courseForm.youtubeUrl) && (
-              <img src={extractThumbnail(courseForm.youtubeUrl)} alt="Preview"
+              className="input-glass" placeholder="https://www.youtube.com/playlist?list=..." required />
+          </div>
+          <div>
+            <label className="block text-sm text-dark-200 mb-1">Thumbnail image URL {isPlaylistUrl(courseForm.youtubeUrl) ? '*' : '(optional)'}</label>
+            <input type="url" value={courseForm.thumbnailUrl}
+              onChange={(e) => setCourseForm({ ...courseForm, thumbnailUrl: e.target.value })}
+              className="input-glass" placeholder="https://example.com/playlist-cover.jpg" />
+            {isPlaylistUrl(courseForm.youtubeUrl) && !courseForm.thumbnailUrl && (
+              <p className="mt-2 text-xs text-amber-300">Add a cover image URL for this playlist. YouTube only supplies automatic thumbnails for individual videos.</p>
+            )}
+            {thumbnailPreview && (
+              <img src={thumbnailPreview} alt="Course preview"
                 className="mt-3 rounded-xl w-full aspect-video object-cover border border-white/5" />
             )}
           </div>

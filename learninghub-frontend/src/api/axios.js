@@ -4,7 +4,12 @@
 
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
+// Accept either the Render service origin or an explicit /api URL. This keeps
+// production requests aligned with Flask's /api blueprint prefix.
+const API_URL = configuredApiUrl
+  ? `${configuredApiUrl.replace(/\/api$/, '')}/api`
+  : '/api';
 
 const api = axios.create({
   baseURL: API_URL,

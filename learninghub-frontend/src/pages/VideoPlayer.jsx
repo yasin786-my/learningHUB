@@ -63,8 +63,13 @@ export default function VideoPlayer() {
     }
 
     const course = item.course;
+    const playlistIdMatch = course.youtubeUrl?.match(/[?&]list=([^&]+)/);
+    const playlistId = playlistIdMatch?.[1];
     const videoIdMatch = course.youtubeUrl?.match(/(?:v=|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/);
     const videoId = videoIdMatch?.[1];
+    const embedUrl = playlistId
+        ? `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(playlistId)}&autoplay=1`
+        : videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : null;
 
     return (
         <div className="min-h-screen bg-dark-950 relative">
@@ -86,12 +91,12 @@ export default function VideoPlayer() {
                         transition={{ duration: 0.5 }}
                         className="glass-heavy rounded-2xl overflow-hidden mb-8 glow-sapphire"
                     >
-                        {videoId ? (
+                        {embedUrl ? (
                             <div className="aspect-video">
                                 <iframe
                                     width="100%"
                                     height="100%"
-                                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                                    src={embedUrl}
                                     title={course.title}
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -101,7 +106,7 @@ export default function VideoPlayer() {
                             </div>
                         ) : (
                             <div className="aspect-video bg-dark-800 flex items-center justify-center text-dark-400">
-                                Invalid YouTube URL
+                                Invalid YouTube video or playlist URL
                             </div>
                         )}
                     </motion.div>

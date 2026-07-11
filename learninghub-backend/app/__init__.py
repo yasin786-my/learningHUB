@@ -84,9 +84,18 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
 
-    cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
-    CORS(app, resources={r"/api/*": {"origins": cors_origins.split(",")}},
-         supports_credentials=True)
+    cors_origins = [
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+        if origin.strip()
+    ]
+    # All public API routes live under /api.  Restrict CORS to that prefix so
+    # only explicitly configured frontend origins can call the API.
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": cors_origins}},
+        supports_credentials=True,
+    )
 
     # ── Blueprints ─────────────────────────────────────────────────
     from app.routes.auth    import auth_bp

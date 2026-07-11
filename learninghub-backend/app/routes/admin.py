@@ -121,6 +121,7 @@ def create_course():
     title       = (data.get("title") or "").strip()
     description = (data.get("description") or "").strip()
     youtube_url = (data.get("youtubeUrl") or "").strip()
+    thumbnail_url = (data.get("thumbnailUrl") or "").strip()
 
     if not title or not youtube_url:
         return jsonify({"error": "title and youtubeUrl are required"}), 400
@@ -129,7 +130,9 @@ def create_course():
         title=title,
         description=description,
         youtube_url=youtube_url,
-        thumbnail_url=_youtube_thumbnail(youtube_url),
+        # YouTube exposes a predictable thumbnail URL for videos, but not
+        # playlists. Allow the creator to provide a cover image for playlists.
+        thumbnail_url=thumbnail_url or _youtube_thumbnail(youtube_url),
         teacher_id=admin_id,
     )
     db.session.add(course)
@@ -153,7 +156,10 @@ def update_course(course_id):
         course.description = data["description"]
     if "youtubeUrl" in data:
         course.youtube_url = data["youtubeUrl"]
-        course.thumbnail_url = _youtube_thumbnail(data["youtubeUrl"])
+        if "thumbnailUrl" not in data:
+            course.thumbnail_url = _youtube_thumbnail(data["youtubeUrl"])
+    if "thumbnailUrl" in data:
+        course.thumbnail_url = (data["thumbnailUrl"] or "").strip() or _youtube_thumbnail(course.youtube_url)
     if "isPublished" in data:
         course.is_published = bool(data["isPublished"])
 
