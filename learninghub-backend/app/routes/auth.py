@@ -68,7 +68,10 @@ def _send_registration_otp(email: str, code: str) -> None:
         f"This code expires in {OTP_EXPIRY_MINUTES} minutes. If you did not start registration, you can ignore this email."
     )
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as smtp:
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.ehlo()
         smtp.login(sender, app_password)
         smtp.send_message(message)
 
